@@ -1,0 +1,8 @@
+--style=1tbs
+--break-blocks
+--pad-oper
+--pad-header
+--add-brackets
+--keep-one-line-blocks
+--keep-one-line-statements
+--convert-tabs
