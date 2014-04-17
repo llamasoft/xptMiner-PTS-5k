@@ -5,7 +5,7 @@
 #include <cmath>
 #include <cstdlib>
 
-#include "momentumOpenCL.hpp";
+#include "momentumOpenCL.hpp"
 
 #define MAX_NONCE_BITS          ( 26 )
 #define MAX_MOMENTUM_NONCE      ( 1 << MAX_NONCE_BITS )

@@ -1,6 +1,7 @@
-# Keep proprietary code set aside
+# Keep proprietary and junk code set aside
 opencl/
 _unused/
+*.bat
 
 #################
 ## Eclipse

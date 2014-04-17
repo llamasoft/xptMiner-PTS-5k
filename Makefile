@@ -24,7 +24,7 @@ INCLUDEPATHS = -I/usr/local/include -I/usr/include -IxptMiner/includes/
 
 ifeq ($(OSVERSION),Linux)
 	LIBS += -lrt -lOpenCL
-	LIBPATHS += -L/opt/AMDAPP/lib/x86 -L/opt/AMDAPP/lib/x86_64
+	LIBPATHS += -L/opt/AMDAPP/lib/x86_64 -L/opt/AMDAPP/lib/x86
 	INCLUDEPATHS += -I/opt/AMDAPP/include 
 	CFLAGS += -march=native
 	CXXFLAGS += -march=native
