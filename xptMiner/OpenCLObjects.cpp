@@ -259,31 +259,31 @@ std::string OpenCLDevice::getSupportedExtensions() {
     return rtn;
 }
 
-unsigned long OpenCLDevice::getMaxWorkGroupSize() {
+cl_ulong OpenCLDevice::getMaxWorkGroupSize() {
     cl_ulong value;
     check_error(clGetDeviceInfo(my_id, CL_DEVICE_MAX_WORK_GROUP_SIZE, (sizeof(cl_ulong)), &value, NULL));
     return value;
 }
 
-unsigned long OpenCLDevice::getMaxMemAllocSize() {
+cl_ulong OpenCLDevice::getMaxMemAllocSize() {
     cl_ulong value;
     check_error(clGetDeviceInfo(my_id, CL_DEVICE_MAX_MEM_ALLOC_SIZE, (sizeof(cl_ulong)), &value, NULL));
     return value;
 }
 
-unsigned long OpenCLDevice::getLocalMemSize() {
+cl_ulong OpenCLDevice::getLocalMemSize() {
     cl_ulong value;
     check_error(clGetDeviceInfo(my_id, CL_DEVICE_LOCAL_MEM_SIZE, (sizeof(cl_ulong)), &value, NULL));
     return value;
 }
 
-unsigned long OpenCLDevice::getGlobalMemSize() {
+cl_ulong OpenCLDevice::getGlobalMemSize() {
     cl_ulong value;
     check_error(clGetDeviceInfo(my_id, CL_DEVICE_GLOBAL_MEM_SIZE, (sizeof(cl_ulong)), &value, NULL));
     return value;
 }
 
-unsigned long OpenCLDevice::getMaxParamSize() {
+cl_ulong OpenCLDevice::getMaxParamSize() {
     cl_ulong value;
     check_error(clGetDeviceInfo(my_id, CL_DEVICE_MAX_PARAMETER_SIZE, (sizeof(cl_ulong)), &value, NULL));
     return value;
@@ -302,11 +302,11 @@ bool OpenCLDevice::isGPU() {
     return (value & CL_DEVICE_TYPE_GPU);
 }
 
-std::vector<long> OpenCLDevice::getMaxWorkItemSizes() {
+std::vector<cl_ulong> OpenCLDevice::getMaxWorkItemSizes() {
     int size = getMaxWorkItemDimensions();
     cl_ulong *value = new cl_ulong[size];
     check_error(clGetDeviceInfo(my_id, CL_DEVICE_MAX_WORK_ITEM_SIZES, (sizeof(cl_ulong)*size), &value, NULL));
-    std::vector<long> ret;
+    std::vector<cl_ulong> ret;
     for (int i = 0; i < size; i++) {
         ret.push_back(value[i]);
     }

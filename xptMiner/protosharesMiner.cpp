@@ -11,6 +11,7 @@
 #define MAX_MOMENTUM_NONCE      ( 1 << MAX_NONCE_BITS )
 #define SEARCH_SPACE_BITS       ( 50 )
 #define BIRTHDAYS_PER_HASH      ( 8 )
+// #define USE_SOURCE
 // #define MEASURE_TIME
 // #define VERIFY_RESULTS
 // #define NOSUBMIT
@@ -202,20 +203,7 @@ ProtoshareOpenCL::ProtoshareOpenCL(int _device_num)
     this->bucket_size = commandlineInput.bucket_size;
     this->target_mem = commandlineInput.target_mem;
 
-
-    printf("Using %d work group size\n", wgs);
-    printf("Using vector size %d\n", vect_type);
-    printf("Using 2^%d buckets\n", buckets_log2);
-
-    // Make sure hash list fits in memory or give up
-    if (calc_hash_mem_usage(buckets_log2, bucket_size) > device->getGlobalMemSize() || calc_hash_mem_usage(buckets_log2, bucket_size) > device->getMaxMemAllocSize()) {
-        printf("ERROR: Your device doesn't support the minimum requried memory to use this program.\n");
-        printf("       This program requires at least %d MB of contiguous memory,\n", calc_hash_mem_usage(buckets_log2, bucket_size) / 1024 / 1024);
-        printf("       but your device only supports up to %d MB.\n", std::min(device->getGlobalMemSize(), device->getMaxMemAllocSize()) / 1024 / 1024);
-        exit(0);
-    }
-
-    // If bucket size unset and target memory unset, use maximum usable memory
+// If bucket size unset and target memory unset, use maximum usable memory
     if (target_mem == 0 && bucket_size == 0) {
         target_mem = device->getGlobalMemSize() / 1024 / 1024;
     }
@@ -231,45 +219,52 @@ ProtoshareOpenCL::ProtoshareOpenCL(int _device_num)
         while (bucket_size > 0 && calc_total_mem_usage(buckets_log2, bucket_size) > target_mem_temp) { bucket_size--; }
 
         // Make sure the parameter configuration is sane:
-        if (bucket_size < 2) {
+        if (bucket_size < 1) {
             printf("ERROR: Memory target of %d MB cannot be attained with 2^%d buckets!\n", target_mem, buckets_log2);
-            printf("       Please consider lowering the value of \"-b\".\n");
+            printf("       Please lower the value of \"-b\" or increase the value of \"-m\".\n");
             exit(0);
         }
     }
 
-    std::string limit_reason = "";
 
     // Make sure we can allocate hash_list (cannot violate CL_DEVICE_MAX_MEM_ALLOC_SIZE)
-    if (std::max(calc_hash_mem_usage(buckets_log2, bucket_size), calc_index_mem_usage(buckets_log2, bucket_size)) > device->getMaxMemAllocSize()) {
-        while (bucket_size > 0 && calc_hash_mem_usage(buckets_log2, bucket_size) > device->getMaxMemAllocSize()) { bucket_size--; }
-
-        if (bucket_size < 2) {
-            printf("ERROR: Device %d cannot allocate hash list using 2^%d buckets!\n", device_num, buckets_log2);
-            printf("       Please lower the value of \"-b\" or increase \"-m\".\n");
-            exit(0);
-        }
-
-        limit_reason = "(limited by CL_DEVICE_MAX_MEM_ALLOC_SIZE)";
-    }
-
-    printf("Using %d elements per bucket %s\n", bucket_size, limit_reason.c_str());
-
-
-    // Make sure the whole thing fits in memory
-    // Because bucket_size is limited by CL_DEVICE_MAX_MEM_ALLOC_SIZE, I don't think
-    //   it's possible to actually reach this.
-    uint32 required_mem = calc_total_mem_usage(buckets_log2, bucket_size);
-
-    if (required_mem > device->getGlobalMemSize()) {
-        printf("ERROR: Device %d cannot store 2^%d buckets of %d elements!\n", device_num, buckets_log2, bucket_size);
-        printf("       You require %d MB of memory but only have %d MB available.\n",
-               required_mem / 1024 / 1024,
-               device->getGlobalMemSize() / 1024 / 1024);
-        printf("       Consider setting a target memory usage with \"-m\".\n");
+    cl_ulong required_mem = calc_hash_mem_usage(buckets_log2, bucket_size);
+    cl_ulong available_mem = device->getMaxMemAllocSize();
+    if (required_mem > available_mem) {
+        printf("ERROR: Device %d cannot allocate 2^%d buckets of %d elements!\n", device_num, buckets_log2, bucket_size);
+        printf("       CL_DEVICE_MAX_MEM_ALLOC_SIZE is %d MB, this configuration requires %d MB\n", available_mem / 1024 / 1024, required_mem / 1024 / 1024);
+        printf("       Please lower the value of \"-b\" or \"-s\" or increase the value of \"-m\".\n");
         exit(0);
     }
 
+
+    // Make sure we can allocate nonce_map (cannot violate CL_DEVICE_MAX_MEM_ALLOC_SIZE)
+    required_mem = calc_index_mem_usage(buckets_log2, bucket_size);
+    available_mem = device->getMaxMemAllocSize();
+    if (required_mem > available_mem) {
+        printf("ERROR: Device %d cannot allocate index of 2^%d elements!\n", device_num, buckets_log2);
+        printf("       CL_DEVICE_MAX_MEM_ALLOC_SIZE is %d MB, this configuration requires %d MB\n", available_mem / 1024 / 1024, required_mem / 1024 / 1024);
+        printf("       Please lower the value of \"-b\" or increase the value of \"-m\".\n");
+        exit(0);
+    }
+    
+    
+    // Make sure the whole thing fits in memory
+    required_mem = calc_total_mem_usage(buckets_log2, bucket_size);
+    available_mem = device->getGlobalMemSize();
+    if (required_mem > available_mem) {
+        printf("ERROR: Device %d cannot store 2^%d buckets of %d elements!\n", device_num, buckets_log2, bucket_size);
+        printf("       CL_DEVICE_GLOBAL_MEM_SIZE is %d MB, this configuration requires %d MB\n", available_mem / 1024 / 1024, required_mem / 1024 / 1024);
+        printf("       Please lower the value of \"-b\" or \"-s\" or increase the value of \"-m\".\n");
+        exit(0);
+    }
+    
+
+    // All clear, show the running parameters!
+    printf("Using %d work group size\n", wgs);
+    printf("Using vector size %d\n", vect_type);
+    printf("Using 2^%d buckets\n", buckets_log2);
+    printf("Using %d elements per bucket\n", bucket_size);
     printf("Using %d MB of memory\n", required_mem / 1024 / 1024);
     printf("Estimated drop percentage: %5.2f%%\n", 100 * poisson_estimate((1 << buckets_log2), MAX_MOMENTUM_NONCE, bucket_size));
     printf("\n");
